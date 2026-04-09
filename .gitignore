@@ -1,0 +1,23 @@
+# Виртуальное окружение
+.venv/
+venv/
+env/
+
+# Файлы базы данных и датасетов (если не хотите их версионировать)
+*.db
+*.csv
+!dataset_example.csv   # если есть образец
+
+# Сохранённые модели
+*.pkl
+
+# Кэш Python
+__pycache__/
+*.pyc
+
+# Настройки IDE
+.vscode/
+.idea/
+
+# Локальные настройки Streamlit
+.streamlit/secrets.toml
