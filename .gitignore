@@ -3,17 +3,14 @@
 venv/
 env/
 
-# Файлы базы данных и датасетов 
-*.db
-*.csv
-!dataset_example.csv   # если есть образец
-
-# Сохранённые модели
-*.pkl
-
 # Кэш Python
 __pycache__/
 *.pyc
+
+.docx
+.xlsx
+.pptx
+.pdf
 
 # Настройки IDE
 .vscode/
