@@ -3,71 +3,161 @@ import requests
 import json
 from typing import Optional
 from datetime import datetime
+import ast
 
 from classifier.retrieval import retrieve_similar_goals
 from classifier.judge import classify_with_openrouter
 from classifier.local_toxicity import analyze_toxicity
-from database import init_db, create_session, save_message, export_all_messages
+from database import (
+    init_db, create_session, delete_session, rename_session,
+    get_all_sessions, get_messages, save_message, export_session_messages
+)
 
-# Загрузка  CSS
+# ---------- CSS ----------
 def load_css():
     with open("style.css", "r", encoding="utf-8") as f:
         css = f.read()
     st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
 
 load_css()
-
-# Инициализация БД
 init_db()
 
-st.title("Чат-бот GigaChat с оценкой ответов")
-st.write(
-    "Чат-бот на GigaChat. Ответы оцениваются моделью через OpenRouter: "
-    "хороший (безопасный) или плохой (вредный/неэтичный) с пояснением причины. "
-    "Дополнительно проводится анализ токсичности локальной моделью Tinkoff. "
-    "Все диалоги сохраняются в БД для последующего обучения."
-)
+# ---------- Инициализация состояния ----------
+if "current_session_id" not in st.session_state:
+    sessions = get_all_sessions()
+    if sessions:
+        st.session_state.current_session_id = sessions[0][0]
+    else:
+        st.session_state.current_session_id = create_session()
 
-# Поле для ключа GigaChat
+if "sessions_list" not in st.session_state:
+    st.session_state.sessions_list = get_all_sessions()
+
+if "messages_cache" not in st.session_state:
+    st.session_state.messages_cache = {}
+
+def refresh_sessions():
+    st.session_state.sessions_list = get_all_sessions()
+
+def switch_chat(session_id):
+    st.session_state.current_session_id = session_id
+    st.rerun()
+
+def create_new_chat():
+    new_id = create_session()
+    refresh_sessions()
+    st.session_state.current_session_id = new_id
+    st.rerun()
+
+def delete_current_chat():
+    delete_session(st.session_state.current_session_id)
+    refresh_sessions()
+    sessions = st.session_state.sessions_list
+    if sessions:
+        st.session_state.current_session_id = sessions[0][0]
+    else:
+        st.session_state.current_session_id = create_session()
+    st.rerun()
+
+def rename_current_chat(new_name):
+    rename_session(st.session_state.current_session_id, new_name)
+    refresh_sessions()
+    st.rerun()
+
+# ---------- Боковая панель ----------
+with st.sidebar:
+    st.header("☰ История чатов")
+    if st.button("✚ Новый чат", use_container_width=True):
+        create_new_chat()
+    st.markdown("---")
+    for sid, name, start_time in st.session_state.sessions_list:
+        col1, col2 = st.columns([0.8, 0.2])
+        with col1:
+            if st.button(name, key=f"chat_{sid}", use_container_width=True):
+                switch_chat(sid)
+        with col2:
+            if st.button("🗑", key=f"del_{sid}", help="Удалить чат"):
+                if sid == st.session_state.current_session_id:
+                    delete_current_chat()
+                else:
+                    delete_session(sid)
+                    refresh_sessions()
+                    if st.session_state.current_session_id == sid:
+                        delete_current_chat()
+                st.rerun()
+    st.markdown("---")
+    # Экспорт текущего чата
+    df_exp = export_session_messages(st.session_state.current_session_id)
+    if not df_exp.empty:
+        csv_data = df_exp.to_csv(index=False).encode('utf-8')
+        st.download_button(
+            label="⭳ CSV",
+            data=csv_data,
+            file_name=f"chat_{st.session_state.current_session_id[:8]}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+            mime="text/csv"
+        )
+    else:
+        st.info("Нет данных для экспорта")
+
+# ---------- Основная область ----------
+st.title("AI-агентная система red teaming и контроль ответов LLM GigaChat")
+st.write("Выберите чат слева или создайте новый. Все диалоги сохраняются в БД.")
+
+# Загрузка сообщений текущего чата
+if st.session_state.current_session_id not in st.session_state.messages_cache:
+    msgs = get_messages(st.session_state.current_session_id)
+    formatted = []
+    for user_prompt, assistant_response, label, reason, toxicity_details, ts in msgs:
+        formatted.append({"role": "user", "content": user_prompt})
+        formatted.append({
+            "role": "assistant",
+            "content": assistant_response,
+            "label": label,
+            "reason": reason,
+            "toxicity": ast.literal_eval(toxicity_details) if toxicity_details else None
+        })
+    st.session_state.messages_cache[st.session_state.current_session_id] = formatted
+
+# Отображение истории текущего чата
+for message in st.session_state.messages_cache[st.session_state.current_session_id]:
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
+        if message["role"] == "assistant":
+            if "label" in message:
+                reason = message.get("reason", "не указана")
+                if message["label"] == 1:
+                    st.warning(f"⚠ Оценка OpenRouter: **подозрительный ответ**\n\nПричина: {reason}")
+                elif message["label"] == 0:
+                    st.success(f"✓ Оценка OpenRouter: **валидный ответ**\n\nПричина: {reason}")
+                else:
+                    st.info(f"⍰ Оценка OpenRouter не определена\n\n{reason}")
+            if "toxicity" in message and message["toxicity"]:
+                tox = message["toxicity"]
+                if tox["label"] != 0:
+                    st.error(f"**Анализ токсичности.** {tox['explanation']}")
+                else:
+                    st.success(f"**Анализ токсичности.** {tox['explanation']}")
+
+# ---------- Поля ввода API-ключей (как в оригинале) ----------
 gigachat_api_key = st.text_input(
     "GigaChat API Key",
     type="password",
-    value="MDE5YmMwODYtMjM0MC03NWU2LThiZWQtYWM4M2RhNGQ4N2UxOjY0MDlhNjgxLWU3ZjktNGNmYi04MDkzLWQyMTkyODBkNjM4NA=="
+    value="MDE5YmMwODYtMjM0MC03NWU2LThiZWQtYWM4M2RhNGQ4N2UxOjY0MDlhNjgxLWU3ZjktNGNmYi04MDkzLWQyMTkyODBkNjM4NA==",
+    key="gigachat_key_input"
 )
-
-# Поле для ключа OpenRouter
 openrouter_api_key = st.text_input(
     "OpenRouter API Key",
     type="password",
-    value="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"
+    value="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",
+    key="openrouter_key_input"
 )
-
-# Боковая панель для экспорта
-with st.sidebar:
-    st.header("Экспорт данных")
-    df_all = export_all_messages()
-    if df_all.empty:
-        st.info("Нет данных для экспорта")
-    else:
-        csv_data = df_all.to_csv(index=False).encode('utf-8')
-        st.download_button(
-            label="CSV",
-            data=csv_data,
-            file_name=f"chat_history_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
-            mime="text/csv"
-        )
-    st.markdown("---")
-    if "session_id" in st.session_state:
-        st.caption(f"Сессия: {st.session_state.session_id[:8]}...")
-    else:
-        st.caption("Сессия будет создана после ввода ключей")
 
 if not gigachat_api_key:
     st.info("Пожалуйста, введите API-ключ GigaChat для продолжения.", icon="🔑")
 elif not openrouter_api_key:
     st.info("Пожалуйста, введите API-ключ OpenRouter для классификатора.", icon="🔑")
 else:
-    # Функция получения токена GigaChat
+    # ---------- Токен GigaChat ----------
     def get_gigachat_token(auth_key: str) -> Optional[str]:
         url = "https://ngw.devices.sberbank.ru:9443/api/v2/oauth"
         headers = {
@@ -93,10 +183,7 @@ else:
             else:
                 st.stop()
 
-    if "session_id" not in st.session_state:
-        st.session_state.session_id = create_session()
-
-    # Функция вызова GigaChat
+    # ---------- Функция вызова GigaChat ----------
     def gigachat_stream(messages: list, access_token: str):
         url = "https://gigachat.devices.sberbank.ru/api/v1/chat/completions"
         headers = {
@@ -132,39 +219,20 @@ else:
             st.error(f"Ошибка при вызове GigaChat: {e}")
             yield "Извините, произошла ошибка."
 
-    if "messages" not in st.session_state:
-        st.session_state.messages = []
-
-    # Отображение истории
-    for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
-            if message["role"] == "assistant":
-                # Показываем оценку от OpenRouter
-                if "label" in message:
-                    reason = message.get("reason", "не указана")
-                    if message["label"] == 1:
-                        st.warning(f"Оценка OpenRouter: **подозрительный ответ**\n\nПричина: {reason}")
-                    elif message["label"] == 0:
-                        st.success(f"Оценка OpenRouter: **валидный ответ**\n\nПричина: {reason}")
-                    else:
-                        st.info(f"Оценка OpenRouter не определена\n\n{reason}")
-                # Показываем анализ токсичности
-                if "toxicity" in message:
-                    tox = message["toxicity"]
-                    if tox["label"] != 0:
-                        st.error(f"**Анализ токсичности:** {tox['explanation']}")
-                    else:
-                        st.success(f"**Анализ токсичности:** {tox['explanation']}")
-
-    # Поле ввода
+    # ---------- Поле ввода нового сообщения ----------
     if prompt := st.chat_input("Введите сообщение..."):
-        st.session_state.messages.append({"role": "user", "content": prompt})
+        # Добавляем сообщение пользователя в кэш и отображаем
+        st.session_state.messages_cache[st.session_state.current_session_id].append({"role": "user", "content": prompt})
         with st.chat_message("user"):
             st.markdown(prompt)
 
-        api_messages = [{"role": m["role"], "content": m["content"]} for m in st.session_state.messages]
+        # История для GigaChat (все сообщения текущего чата)
+        api_messages = [
+            {"role": m["role"], "content": m["content"]}
+            for m in st.session_state.messages_cache[st.session_state.current_session_id]
+        ]
 
+        # Ответ ассистента
         with st.chat_message("assistant"):
             with st.spinner("GigaChat печатает..."):
                 response_placeholder = st.empty()
@@ -174,17 +242,16 @@ else:
                     response_placeholder.markdown(full_response + "▌")
                 response_placeholder.markdown(full_response)
 
-        # Классификация через OpenRouter
+        # Классификация и токсичность
         with st.spinner("Оценка ответа через OpenRouter..."):
             similar = retrieve_similar_goals(prompt, k=3)
             label, reason = classify_with_openrouter(prompt, full_response, similar, openrouter_api_key)
 
-        # Локальный анализ токсичности
         with st.spinner("Анализ ответа локальной моделью..."):
             toxicity = analyze_toxicity(full_response)
 
-        # Сохраняем в сессию для отображения
-        st.session_state.messages.append({
+        # Сохраняем в кэш
+        st.session_state.messages_cache[st.session_state.current_session_id].append({
             "role": "assistant",
             "content": full_response,
             "label": label,
@@ -194,7 +261,7 @@ else:
 
         # Сохраняем в БД
         save_message(
-            session_id=st.session_state.session_id,
+            session_id=st.session_state.current_session_id,
             user_prompt=prompt,
             assistant_response=full_response,
             label=label,
@@ -202,15 +269,17 @@ else:
             toxicity_details=toxicity
         )
 
-        # Показываем оценки
+        # Отображаем оценки
         if label == 1:
-            st.warning(f"Оценка OpenRouter: **подозрительный ответ**\n\nПричина: {reason}")
+            st.warning(f"⚠ Оценка OpenRouter: **подозрительный ответ**\n\nПричина: {reason}")
         elif label == 0:
-            st.success(f"Оценка OpenRouter: **валидный ответ**\n\nПричина: {reason}")
+            st.success(f"✓ Оценка OpenRouter: **валидный ответ**\n\nПричина: {reason}")
         else:
-            st.info(f"Оценка OpenRouter не определена\n\n{reason}")
+            st.info(f"⍰ Оценка OpenRouter не определена\n\n{reason}")
 
         if toxicity["label"] != 0:
-            st.error(f"**Анализ токсичности:** {toxicity['explanation']}")
+            st.error(f"**Анализ токсичности.** {toxicity['explanation']}")
         else:
-            st.success(f"**Анализ токсичности:** {toxicity['explanation']}")
+            st.success(f"**Анализ токсичности.** {toxicity['explanation']}")
+
+        st.rerun()

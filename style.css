@@ -131,8 +131,8 @@ h1, h2, h3, .stMarkdown h1, .stMarkdown h2, .stMarkdown h3 {
 }
 
 .stTextInput > div > div > input:focus {
-    border-color: white !important;
-    box-shadow: 0 0 12px rgba(255,255,255,0.3) !important;
+    border-color: #FF2A6D !important;
+    box-shadow: 0 0 12px rgba(255, 42, 109, 0.3) !important;
     background: rgba(20, 24, 45, 0.95) !important;
 }
 
@@ -149,19 +149,22 @@ h1, h2, h3, .stMarkdown h1, .stMarkdown h2, .stMarkdown h3 {
     box-shadow: 0 0 0 3px rgba(0, 240, 255, 0.2);
 }
 
-/* ========== КНОПКИ ========== */
+/* ========== КНОПКИ  ========== */
 .stButton > button {
-    background: linear-gradient(90deg, #00E676, #00F0FF) !important;
+    background: linear-gradient(90deg, #0a2f2f, #0a1f2a) !important;
     border-radius: 9999px !important;
     font-weight: 600;
-    border: none;
-    transition: 0.2s;
+    border: 1px solid rgba(255, 255, 255, 0.3) !important;
+    color: #f0f0f0 !important;
     padding: 0.5rem 1.2rem;
+    transition: transform 0.2s, box-shadow 0.2s;
+    box-shadow: 0 0 8px rgba(255, 255, 255, 0.2);
 }
 
 .stButton > button:hover {
     transform: scale(1.02);
-    box-shadow: 0 0 15px rgba(0, 240, 255, 0.4);
+    box-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+    border-color: rgba(255, 255, 255, 0.6);
 }
 
 /* ========== АНИМАЦИЯ ПОЯВЛЕНИЯ ========== */
