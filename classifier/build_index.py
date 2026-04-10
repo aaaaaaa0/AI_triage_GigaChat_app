@@ -1,15 +1,12 @@
-# classifier/build_index.py
 import pandas as pd
-import requests
-import json
-from sentence_transformers import SentenceTransformer
 import faiss
 import numpy as np
+from sentence_transformers import SentenceTransformer
 
 # ------------------- 1. Загрузка и разметка датасета -------------------
 df = pd.read_csv('D:\1. 4 семестр\14. ПП 3\data\train_dataset.csv')
 
-# Простые правила для быстрой разметки (можно заменить на ручную)
+# Простые правила для быстрой разметки 
 bad_keywords = [
     'shell companies', 'funnel money', 'torture', 'pedophilia', 'identity theft',
     'deepfake', 'keylogger', 'child pornography', 'cannibals', 'suicide',

@@ -1,0 +1,188 @@
+@import url('https://fonts.googleapis.com/css2?family=Exo+2:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&display=swap');
+
+:root {
+    --sber-green: #00E676;
+    --neon-cyan: #00F0FF;
+    --neon-red: #FF2A6D;
+    --neon-orange: #FF6B00;
+    --dark-bg: #0a0a14;
+    --glass: rgba(12, 15, 32, 0.82);
+}
+
+/* ========== ОСНОВНОЙ ФОН ========== */
+html, body, .stApp {
+    font-family: 'Exo 2', 'Inter', system-ui, sans-serif;
+    background: 
+        radial-gradient(circle at 30% 20%, rgba(0, 240, 255, 0.08) 0%, transparent 50%),
+        radial-gradient(circle at 70% 80%, rgba(0, 230, 118, 0.08) 0%, transparent 50%),
+        linear-gradient(135deg, #0a0a14 0%, #12121f 45%, #1a1a2b 100%);
+    background-size: 200% 200%, 200% 200%, 400% 400%;
+    animation: cosmicShift 30s ease infinite;
+    color: #f0f4ff;
+    overflow-x: hidden;
+}
+
+@keyframes cosmicShift {
+    0%   { background-position: 0% 50%, 100% 50%, 0% 50%; }
+    50%  { background-position: 100% 50%, 0% 50%, 100% 50%; }
+    100% { background-position: 0% 50%, 100% 50%, 0% 50%; }
+}
+
+/* Сетка */
+.stApp::before {
+    content: "";
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: 
+        linear-gradient(rgba(0,240,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,240,255,0.03) 1px, transparent 1px);
+    background-size: 80px 80px;
+    pointer-events: none;
+    z-index: 0;
+    animation: gridMove 120s linear infinite;
+}
+@keyframes gridMove {
+    0% { background-position: 0 0; }
+    100% { background-position: -80px -80px; }
+}
+
+/* ========== ЗАГОЛОВКИ ========== */
+h1, h2, h3, .stMarkdown h1, .stMarkdown h2, .stMarkdown h3 {
+    font-family: 'Exo 2', sans-serif !important;
+    font-weight: 300 !important;
+    letter-spacing: -0.5px;
+}
+
+.stMarkdown h1 {
+    background: linear-gradient(90deg, #00F0FF, #00E676);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent !important;
+    text-shadow: 0 0 5px rgba(0,240,255,0.5);
+    font-size: 2.4rem !important;
+    font-weight: 300 !important;
+}
+
+/* ========== САЙДБАР ========== */
+[data-testid="stSidebar"] > div {
+    background: var(--glass) !important;
+    backdrop-filter: blur(24px) saturate(180%);
+    border-right: 1px solid rgba(0, 240, 255, 0.18);
+}
+
+/* ========== СООБЩЕНИЯ ЧАТА ========== */
+.stChatMessage {
+    background: rgba(18, 20, 38, 0.75) !important;
+    backdrop-filter: blur(18px) saturate(160%);
+    border-radius: 28px;
+    padding: 18px 24px;
+    margin: 18px 0;
+    border: 1px solid rgba(255,255,255,0.1);
+    box-shadow: 
+        0 8px 32px -12px rgba(0,0,0,0.5),
+        inset 0 1px 0 rgba(255,255,255,0.08);
+    transition: transform 0.3s ease;
+}
+
+.stChatMessage:hover {
+    transform: translateY(-4px) scale(1.01);
+}
+
+/* Пользователь */
+[data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarUser"]) {
+    background: linear-gradient(115deg, rgba(255, 42, 109, 0.22), rgba(255, 107, 0, 0.08)) !important;
+    border-left: 5px solid var(--neon-red);
+    box-shadow: 0 0 25px -5px var(--neon-red);
+    animation: colorShiftUser 3s ease infinite;
+}
+
+@keyframes colorShiftUser {
+    0% { border-left-color: #FF2A6D; box-shadow: 0 0 25px -5px #FF2A6D; }
+    50% { border-left-color: #FF6B00; box-shadow: 0 0 25px -5px #FF6B00; }
+    100% { border-left-color: #FF2A6D; box-shadow: 0 0 25px -5px #FF2A6D; }
+}
+
+/* Ассистент */
+[data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarAssistant"]) {
+    background: linear-gradient(115deg, rgba(0, 230, 118, 0.22), rgba(0, 240, 255, 0.08)) !important;
+    border-right: 5px solid var(--sber-green);
+    box-shadow: 0 0 25px -5px var(--sber-green);
+    animation: colorShiftAssistant 3s ease infinite;
+}
+
+@keyframes colorShiftAssistant {
+    0% { border-right-color: #00E676; box-shadow: 0 0 25px -5px #00E676; }
+    50% { border-right-color: #00F0FF; box-shadow: 0 0 25px -5px #00F0FF; }
+    100% { border-right-color: #00E676; box-shadow: 0 0 25px -5px #00E676; }
+}
+
+/* ========== ПОЛЯ ВВОДА API КЛЮЧЕЙ ========== */
+.stTextInput > div {
+    border-radius: 28px !important;
+}
+
+.stTextInput > div > div > input {
+    background: rgba(15, 18, 35, 0.85) !important;
+    border: 1px solid rgba(255,255,255,0.2) !important;
+    border-radius: 28px !important;
+    padding: 12px 20px !important;
+    font-size: 0.95rem;
+    transition: all 0.2s;
+}
+
+.stTextInput > div > div > input:focus {
+    border-color: white !important;
+    box-shadow: 0 0 12px rgba(255,255,255,0.3) !important;
+    background: rgba(20, 24, 45, 0.95) !important;
+}
+
+/* ========== ПОЛЕ ВВОДА СООБЩЕНИЙ ========== */
+.stChatInputContainer > div {
+    background: rgba(15, 18, 35, 0.9) !important;
+    backdrop-filter: blur(22px);
+    border-radius: 9999px !important;
+    border: 1px solid rgba(0, 240, 255, 0.3) !important;
+}
+
+.stChatInputContainer > div:focus-within {
+    border-color: var(--neon-cyan) !important;
+    box-shadow: 0 0 0 3px rgba(0, 240, 255, 0.2);
+}
+
+/* ========== КНОПКИ ========== */
+.stButton > button {
+    background: linear-gradient(90deg, #00E676, #00F0FF) !important;
+    border-radius: 9999px !important;
+    font-weight: 600;
+    border: none;
+    transition: 0.2s;
+    padding: 0.5rem 1.2rem;
+}
+
+.stButton > button:hover {
+    transform: scale(1.02);
+    box-shadow: 0 0 15px rgba(0, 240, 255, 0.4);
+}
+
+/* ========== АНИМАЦИЯ ПОЯВЛЕНИЯ ========== */
+@keyframes fadeUp {
+    from { opacity: 0; transform: translateY(15px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.stChatMessage {
+    animation: fadeUp 0.3s ease-out forwards;
+}
+
+/* ========== СКРОЛЛБАР ========== */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+::-webkit-scrollbar-track {
+    background: #1e1e2f;
+}
+::-webkit-scrollbar-thumb {
+    background: linear-gradient(#00F0FF, #00E676);
+    border-radius: 10px;
+}
