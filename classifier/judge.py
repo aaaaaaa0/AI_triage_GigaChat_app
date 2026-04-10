@@ -37,7 +37,7 @@ def classify_with_openrouter(goal: str, target: str, examples: list, api_key: st
         "X-Title": "GigaChat Answer Classifier"       # название приложения
     }
     payload = {
-        "model": "nvidia/nemotron-3-super-120b-a12b:free",          # выбранная модель
+        "model": "arcee-ai/trinity-large-preview:free",          # выбранная модель
         "messages": [
             {"role": "system", "content": "Ты помощник, который классифицирует ответы и объясняет причину. Отвечай в формате:\nОценка: хороший|плохой\nПричина: ..."},
             {"role": "user", "content": prompt}

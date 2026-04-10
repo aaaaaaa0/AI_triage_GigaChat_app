@@ -148,7 +148,7 @@ gigachat_api_key = st.text_input(
 openrouter_api_key = st.text_input(
     "OpenRouter API Key",
     type="password",
-    value="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",
+    value="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",
     key="openrouter_key_input"
 )
 
