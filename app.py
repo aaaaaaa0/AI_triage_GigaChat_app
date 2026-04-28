@@ -6,7 +6,7 @@ from datetime import datetime
 import ast
 
 from classifier.retrieval import retrieve_similar_goals
-from classifier.judge import classify_with_openrouter
+from classifier.qwen import classify_with_qwen          
 from classifier.local_toxicity import analyze_toxicity
 from database import (
     init_db, create_session, delete_session, rename_session,
@@ -36,7 +36,7 @@ if "sessions_list" not in st.session_state:
 if "messages_cache" not in st.session_state:
     st.session_state.messages_cache = {}
 
-def refresh_sessions():#-
+def refresh_sessions():
     st.session_state.sessions_list = get_all_sessions()
 
 def switch_chat(session_id):
@@ -126,11 +126,11 @@ for message in st.session_state.messages_cache[st.session_state.current_session_
             if "label" in message:
                 reason = message.get("reason", "не указана")
                 if message["label"] == 1:
-                    st.warning(f"⚠ Оценка OpenRouter: **подозрительный ответ**\n\nПричина: {reason}")
+                    st.warning(f"⚠ Оценка Qwen: **подозрительный ответ**\n\nПричина: {reason}")
                 elif message["label"] == 0:
-                    st.success(f"✓ Оценка OpenRouter: **валидный ответ**\n\nПричина: {reason}")
+                    st.success(f"✓ Оценка Qwen: **валидный ответ**\n\nПричина: {reason}")
                 else:
-                    st.info(f"⍰ Оценка OpenRouter не определена\n\n{reason}")
+                    st.info(f"⍰ Оценка Qwen не определена\n\n{reason}")
             if "toxicity" in message and message["toxicity"]:
                 tox = message["toxicity"]
                 if tox["label"] != 0:
@@ -138,24 +138,16 @@ for message in st.session_state.messages_cache[st.session_state.current_session_
                 else:
                     st.success(f"**Анализ токсичности.** {tox['explanation']}")
 
-# ---------- Поля ввода API-ключей (как в оригинале) ----------
+# ---------- Поля ввода API-ключей ----------
 gigachat_api_key = st.text_input(
     "GigaChat API Key",
     type="password",
     value="MDE5YmMwODYtMjM0MC03NWU2LThiZWQtYWM4M2RhNGQ4N2UxOjY0MDlhNjgxLWU3ZjktNGNmYi04MDkzLWQyMTkyODBkNjM4NA==",
     key="gigachat_key_input"
 )
-openrouter_api_key = st.text_input(
-    "OpenRouter API Key",
-    type="password",
-    value="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",
-    key="openrouter_key_input"
-)
 
 if not gigachat_api_key:
     st.info("Пожалуйста, введите API-ключ GigaChat для продолжения.", icon="🔑")
-elif not openrouter_api_key:
-    st.info("Пожалуйста, введите API-ключ OpenRouter для классификатора.", icon="🔑")
 else:
     # ---------- Токен GigaChat ----------
     def get_gigachat_token(auth_key: str) -> Optional[str]:
@@ -242,11 +234,12 @@ else:
                     response_placeholder.markdown(full_response + "▌")
                 response_placeholder.markdown(full_response)
 
-        # Классификация и токсичность
-        with st.spinner("Оценка ответа через OpenRouter..."):
+        # Классификация через Qwen (на ВМ)
+        with st.spinner("Оценка ответа через Qwen (ВМ)..."):
             similar = retrieve_similar_goals(prompt, k=3)
-            label, reason = classify_with_openrouter(prompt, full_response, similar, openrouter_api_key)
+            label, reason = classify_with_qwen(prompt, full_response, similar)   # ключ не нужен
 
+        # Локальный анализ токсичности
         with st.spinner("Анализ ответа локальной моделью..."):
             toxicity = analyze_toxicity(full_response)
 
@@ -271,11 +264,11 @@ else:
 
         # Отображаем оценки
         if label == 1:
-            st.warning(f"⚠ Оценка OpenRouter: **подозрительный ответ**\n\nПричина: {reason}")
+            st.warning(f"⚠ Оценка Qwen: **подозрительный ответ**\n\nПричина: {reason}")
         elif label == 0:
-            st.success(f"✓ Оценка OpenRouter: **валидный ответ**\n\nПричина: {reason}")
+            st.success(f"✓ Оценка Qwen: **валидный ответ**\n\nПричина: {reason}")
         else:
-            st.info(f"⍰ Оценка OpenRouter не определена\n\n{reason}")
+            st.info(f"⍰ Оценка Qwen не определена\n\n{reason}")
 
         if toxicity["label"] != 0:
             st.error(f"**Анализ токсичности.** {toxicity['explanation']}")
