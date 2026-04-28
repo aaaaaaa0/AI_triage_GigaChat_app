@@ -36,7 +36,7 @@ if "sessions_list" not in st.session_state:
 if "messages_cache" not in st.session_state:
     st.session_state.messages_cache = {}
 
-def refresh_sessions():
+def refresh_sessions():#-
     st.session_state.sessions_list = get_all_sessions()
 
 def switch_chat(session_id):
